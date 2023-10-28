@@ -1,23 +1,36 @@
-# import those 2 modules I mentioned
 from PIL import Image
 import numpy as np
+import sys
 from colors import list_of_colors
+from settings import min_size, brick_size
 
 
 # open desired image
-img = Image.open('./image.jpg')
+try:
+    img = Image.open('./image.jpg')
+except FileNotFoundError:
+    print("File not found =(")
+    sys.exit()
+
 # find its width & height
 w, h = img.size
+if w < min_size or h < min_size:
+    print("Image too small")
+    sys.exit()
+
+crop_img = img.resize((min_size, min_size), resample=None,
+                      box=None, reducing_gap=None)
+crop_w, crop_h = crop_img.size
 # find NEW dimensions from user-defined number (50% for example)
-new_w = w * 0.1
-new_h = h * 0.1
+new_w = crop_w * brick_size
+new_h = crop_h * brick_size
 # round to nearest whole number and convert from float to int
 new_w = np.round(new_w)
 new_w = int(new_w)
 new_h = np.round(new_h)
 new_h = int(new_h)
 # downsample image to these new dimensions
-down_sampled = img.resize((new_w, new_h))
+down_sampled = crop_img.resize((new_w, new_h))
 
 
 # find closest color from palette for replace image pixel color
@@ -40,6 +53,7 @@ for i in range(down_sampled.size[0]):  # for every pixel:
 
 
 # upsample back to original size (using "4" to signify bicubic)
-up_sampled = down_sampled.resize((w, h), resample=4)
+up_sampled = down_sampled.resize((crop_w, crop_h), resample=4)
 # save the image
 up_sampled.save('./new_image.jpg')
+print("Success!")
