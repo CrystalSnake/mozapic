@@ -5,7 +5,6 @@ import time
 from colors import list_of_colors
 from settings import min_size, brick_size
 
-portrait_mode = False
 
 # open desired image
 try:
@@ -20,20 +19,20 @@ if w < min_size or h < min_size:
     print("Image too small")
     sys.exit()
 
-if h == w:
-    portrait_mode = False
-elif 0.63 < w/h < 0.7:
-    portrait_mode = True
-else:
-    print("Wrong image ratio")
 
-
-def mosaic(img, portrait_mode):
-    crop_w = min_size
-    if portrait_mode:
-        crop_h = int(np.round(min_size/(2/3)))
-    else:
+def mosaic(img):
+    # Checking the aspect ratio of the image to select a mode
+    if 0.63 < h/w < 0.7:
+        crop_w = int(np.round(min_size/(2/3)))
         crop_h = min_size
+    elif 0.63 < w/h < 0.7:
+        crop_w = min_size
+        crop_h = int(np.round(min_size/(2/3)))
+    elif h == w:
+        crop_w = crop_h = min_size
+    else:
+        print("Wrong image ratio")
+        sys.exit()
     crop_img = img.resize((crop_w, crop_h), resample=None,
                           box=None, reducing_gap=None)
     # find NEW dimensions from user-defined number (50% for example)
@@ -71,4 +70,4 @@ def closest(colors, color):
     return smallest_distance
 
 
-mosaic(img, portrait_mode)
+mosaic(img)
