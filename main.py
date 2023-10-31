@@ -1,6 +1,7 @@
 from PIL import Image
 import numpy as np
 import sys
+import time
 from colors import list_of_colors
 from settings import min_size, brick_size
 
@@ -35,7 +36,6 @@ def mosaic(img, portrait_mode):
         crop_h = min_size
     crop_img = img.resize((crop_w, crop_h), resample=None,
                           box=None, reducing_gap=None)
-    print(crop_w, crop_h)
     # find NEW dimensions from user-defined number (50% for example)
     new_w = crop_w * brick_size
     new_h = crop_h * brick_size
@@ -56,7 +56,8 @@ def mosaic(img, portrait_mode):
     # upsample back to original size (using "4" to signify bicubic)
     up_sampled = down_sampled.resize((crop_w, crop_h), resample=4)
     # save the image
-    up_sampled.save('./new_image.jpg')
+    timestr = time.strftime('%Y%m%d%H%M%S')
+    up_sampled.save('./image_' + timestr + '.jpg')
     print("Success!")
 
 
