@@ -28,22 +28,20 @@ else:
 
 
 def mosaic(img, portrait_mode):
-
+    crop_w = min_size
     if portrait_mode:
-        crop_img = img.resize((min_size*2, min_size*3), resample=None,
-                              box=None, reducing_gap=None)
+        crop_h = int(np.round(min_size/(2/3)))
     else:
-        crop_img = img.resize((min_size, min_size), resample=None,
-                              box=None, reducing_gap=None)
-    crop_w, crop_h = crop_img.size
+        crop_h = min_size
+    crop_img = img.resize((crop_w, crop_h), resample=None,
+                          box=None, reducing_gap=None)
+    print(crop_w, crop_h)
     # find NEW dimensions from user-defined number (50% for example)
     new_w = crop_w * brick_size
     new_h = crop_h * brick_size
     # round to nearest whole number and convert from float to int
-    new_w = np.round(new_w)
-    new_w = int(new_w)
-    new_h = np.round(new_h)
-    new_h = int(new_h)
+    new_w = int(np.round(new_w))
+    new_h = int(np.round(new_h))
     # downsample image to these new dimensions
     down_sampled = crop_img.resize((new_w, new_h))
 
