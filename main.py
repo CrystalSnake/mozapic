@@ -1,9 +1,31 @@
 from PIL import Image
 import numpy as np
 import sys
+import os
 import time
 from colors import list_of_colors
 from settings import min_size, brick_size
+
+
+def cls():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+cls()
+
+
+colors_list = []
+for i in enumerate(list_of_colors):
+    color = {'id': i[0] + 1,
+             'color_code_rgb': i[1],
+             'qty': 0}
+    colors_list.append(color)
+
+
+def pixel_counter(colors_list, color_code):
+    for color in colors_list:
+        if color_code == color['color_code_rgb']:
+            color['qty'] += 1
 
 
 # open desired image
@@ -50,7 +72,9 @@ def mosaic(img):
         for j in range(down_sampled.size[1]):
             # change pixel color to palette
             color_replace = closest(list_of_colors, pixels[i, j])
-            pixels[i, j] = tuple(color_replace[0])
+
+            pixel_counter(colors_list, list(color_replace))
+            pixels[i, j] = color_replace
 
     # upsample back to original size (using "4" to signify bicubic)
     up_sampled = down_sampled.resize((crop_w, crop_h), resample=4)
@@ -67,7 +91,8 @@ def closest(colors, color):
     distances = np.sqrt(np.sum((colors-color)**2, axis=1))
     index_of_smallest = np.where(distances == np.amin(distances))
     smallest_distance = colors[index_of_smallest]
-    return smallest_distance
+    return tuple(smallest_distance[0])
 
 
 mosaic(img)
+print(*colors_list, sep="\n")
