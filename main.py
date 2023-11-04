@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import os
 import time
+from itertools import batched
 from colors import list_of_colors
 from settings import min_size, brick_size
 
@@ -21,11 +22,38 @@ for i in enumerate(list_of_colors):
              'qty': 0}
     colors_list.append(color)
 
+mosaic_map = []
+
+# Counts the number of pixels of each color
+
 
 def pixel_counter(colors_list, color_code):
     for color in colors_list:
-        if color_code == color['color_code_rgb']:
+        if list(color_code) == color['color_code_rgb']:
             color['qty'] += 1
+
+# Forms a matrix with color ID from the palette
+
+
+def fill_mosaic_map(list_of_colors, color_code):
+    mosaic_map.append(list_of_colors.index(list(color_code)) + 1)
+
+# Displays the color matrix for assembly with decoding to the console
+
+
+def print_mosaic_map(mosaic_map, height):
+    matrix = [[] for _ in range(height)]
+    iter = 0
+    for pixel in mosaic_map:
+        matrix[iter].append(pixel)
+        if iter < height - 1:
+            iter += 1
+        else:
+            iter = 0
+    print("Color matrix")
+    print(*matrix, sep="\n")
+    print("Colors legend")
+    print(*colors_list, sep="\n")
 
 
 # open desired image
@@ -72,16 +100,17 @@ def mosaic(img):
         for j in range(down_sampled.size[1]):
             # change pixel color to palette
             color_replace = closest(list_of_colors, pixels[i, j])
-
-            pixel_counter(colors_list, list(color_replace))
+            pixel_counter(colors_list, color_replace)
+            fill_mosaic_map(list_of_colors, color_replace)
             pixels[i, j] = color_replace
-
     # upsample back to original size (using "4" to signify bicubic)
     up_sampled = down_sampled.resize((crop_w, crop_h), resample=4)
     # save the image
     timestr = time.strftime('%Y%m%d%H%M%S')
     up_sampled.save('./image_' + timestr + '.jpg')
     print("Success!")
+    # print mosaic matrix
+    print_mosaic_map(mosaic_map, new_h)
 
 
 # find closest color from palette for replace image pixel color
@@ -95,4 +124,3 @@ def closest(colors, color):
 
 
 mosaic(img)
-print(*colors_list, sep="\n")
