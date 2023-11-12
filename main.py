@@ -10,7 +10,6 @@ from colors import palette
 from settings import min_size, brick_size
 
 
-colors_list = []
 mosaic_map = []
 
 def cls():
@@ -18,11 +17,29 @@ def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def create_list_of_colors():
+def brightness(color):
     """
-    Creates a list of color dictionaries based on the `palette` (list) variable.
+    Calculate the brightness of a color by summing up the RGB values.
+
+    Args:
+        color (tuple): A tuple representing the RGB values of a color.
+
+    Returns:
+        int: The brightness value of the color.
+
+    Example Usage:
+        >>> color = (255, 128, 0)
+        >>> brightness_value = brightness(color)
+        >>> print(brightness_value)
+        383
+    """
+    return sum(color[1])
+
+def create_list_of_colors(image):
+    """
+    Creates a list of color based on the `palette` (list) variable.
     
-    Each dictionary contains an ID, RGB color code, and quantity.
+    Each dictionary contains a tuple with RGB color code for original and replace color, id and quantity for each color.
     
     Example Usage:
     create_list_of_colors()
@@ -33,46 +50,27 @@ def create_list_of_colors():
     Outputs:
     - None
     """
-    for i in enumerate(palette):
-        color = {'id': i[0] + 1,
-            'color_code_rgb': i[1],
-            'qty': 0}
-        colors_list.append(color)
+    colors_list = []
+    origin_colors = image.getcolors()
+    sorted_origin_colors = sorted(origin_colors, key=brightness)
+    used_colors = []
+    id = 1
+    for c in sorted_origin_colors:
+        replace_colors = closest(palette, c[1])
+        for rc in replace_colors:
+            if rc in used_colors:
+                continue
+            else:
+                color = (c[1], tuple(rc), id, c[0]) #(original color, replace color, id, quantity)
+                colors_list.append(color)
+                used_colors.append(rc)
+                id += 1
+                break
+    print(colors_list)
+    return colors_list
 
 
-def color_counter(list_of_colors_with_qty, color_code):
-    """
-    Counts the number of occurrences of a specific color code in a list of colors.
-
-    Args:
-        list_of_colors_with_qty (list): A list of dictionaries containing 
-        color codes and their quantities.
-        color_code (list): A list representing the RGB values of a color.
-
-    Returns:
-        None. The `colors_list` is modified in-place with the quantity 
-        value updated for the matching color code.
-    """
-    for c in list_of_colors_with_qty:
-        if color_code == c['color_code_rgb']:
-            c['qty'] += 1
-
-
-def fill_mosaic_map(colors, color_code):
-    """
-    Appends the ID of a given color code in the `colors` to the `mosaic_map` list.
-    
-    Args:
-        colors (list): A list of color codes.
-        color_code (str): A color code to be added to the `mosaic_map`.
-    
-    Returns:
-        None
-    """
-    mosaic_map.append(colors.index(list(color_code)) + 1)
-
-
-def print_mosaic_matrix(mosaic_pixels, height):
+def print_mosaic_matrix(mosaic_pixels, height, list_of_colors):
     """
     Prints the mosaic matrix and the colors legend.
 
@@ -96,10 +94,13 @@ def print_mosaic_matrix(mosaic_pixels, height):
     print("Color matrix")
     print(*matrix, sep="\n")
     print("Colors legend")
-    print(*colors_list, sep="\n")
+    for color in list_of_colors:
+        color_id = color[2]
+        color_code = color[1]
+        color_qty = color[3]
+        print(f'ID: {color_id} - color: {color_code} qty: {color_qty}')
 
 
-# open desired image
 def open_image(path_to_file):
     """
     Opens an image file and returns the opened image object.
@@ -124,7 +125,7 @@ def open_image(path_to_file):
         print("File not found =(")
         sys.exit()
 
-# find its width & height
+
 def check_image_min_size(image, image_min_size):
     """
     Check if the width and height of an image are greater than a specified minimum size.
@@ -183,27 +184,42 @@ def check_image_aspect_ratio(width, height):
     return [crop_w, crop_h]
 
 
-# find closest color from palette for replace image pixel color
-def closest(colors, color):
+def quantize_image(image, n):
     """
-    Returns the color from the list that is closest to the target color.
+    Converts the input image to a quantized image with a reduced color palette.
 
     Args:
-        colors (list): A list of colors represented as tuples of RGB values.
-        color (tuple): The target color represented as a tuple of RGB values.
+        image (PIL.Image.Image): The input image to be quantized.
+        n - desired number of colors on image
 
     Returns:
-        tuple: The closest color from the `colors` list to the target `color`.
+        PIL.Image.Image: The quantized image with a reduced color palette.
+    """
+    result_image = image.convert("P").quantize(colors=n, dither=Image.Dither.FLOYDSTEINBERG)
+    return result_image
+
+def closest(colors, color):
+    """
+    Returns a list of colors from the input list that are closest to the target color.
+
+    Args:
+        colors (list): A list of RGB color tuples.
+        color (tuple): The target RGB color tuple.
+
+    Returns:
+        list: A list of RGB color tuples from the `colors` list that 
+        are closest to the `color` tuple.
     """
     colors = np.array(colors)
     color = np.array(color)
     distances = np.sqrt(np.sum((colors-color)**2, axis=1))
-    index_of_smallest = np.where(distances == np.amin(distances))
-    smallest_distance = colors[index_of_smallest]
-    return tuple(smallest_distance[0])
+    data = list(zip(colors, distances))
+    sorted_data = sorted(data, key=lambda x: x[1])
+    color_values = [color[0].tolist() for color in sorted_data]
+    return color_values
 
 
-def replace_colors_of_image_to_palette(image):
+def replace_colors_of_image_to_palette(image, list_of_colors):
     """
     Replaces the colors of an image with the closest color from a predefined palette.
 
@@ -215,16 +231,15 @@ def replace_colors_of_image_to_palette(image):
         colors with the closest colors from the palette.
     """
     pixels = image.load()  # create the pixel map
-    create_list_of_colors()
     for i in range(image.size[0]):  # for every pixel:
         for j in range(image.size[1]):
             # change pixel color to palette
-            color_replace = closest(palette, pixels[i, j])
-            color_counter(colors_list, list(color_replace))
-            fill_mosaic_map(palette, color_replace)
-            pixels[i, j] = color_replace
+            for c in list_of_colors:
+                if pixels[i, j] == c[0]:
+                    pixels[i, j] = c[1]
+                    mosaic_map.append(c[2])
 
-def mosaic():
+def mosaic(path_to_file):
     """
     Creates a mosaic image from an input image file.
 
@@ -239,7 +254,7 @@ def mosaic():
     - None
     """
 
-    image = open_image('./image.jpg')
+    image = open_image(path_to_file)
     w, h = check_image_min_size(image, min_size)
     crop_w, crop_h = check_image_aspect_ratio(w, h)
     crop_img = image.resize((crop_w, crop_h), resample=None,
@@ -252,16 +267,17 @@ def mosaic():
     new_h = int(np.round(new_h))
     # downsample image to these new dimensions
     down_sampled = crop_img.resize((new_w, new_h))
-    replace_colors_of_image_to_palette(down_sampled)
+    low_colors_image = quantize_image(down_sampled, len(palette)).convert( mode = 'RGB' )
+    list_of_colors = create_list_of_colors(low_colors_image)
+    replace_colors_of_image_to_palette(low_colors_image, list_of_colors)
     # upsample back to original size (using "4" to signify bicubic)
-    up_sampled = down_sampled.resize((crop_w, crop_h), resample=4)
+    up_sampled = low_colors_image.resize((crop_w, crop_h), resample=4)
     # save the image
     timestr = time.strftime('%Y%m%d%H%M%S')
     up_sampled.save('./image_' + timestr + '.jpg')
     print("Success!")
-    # print mosaic matrix
-    print_mosaic_matrix(mosaic_map, new_h)
+    print_mosaic_matrix(mosaic_map, new_h, list_of_colors)
 
 
 if __name__== "__main__":
-    mosaic()
+    mosaic('./image.jpg')
